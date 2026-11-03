@@ -13,11 +13,13 @@ from sqlalchemy import (
     CheckConstraint,
     Column,
     ForeignKey,
+    Index,
     Integer,
     MetaData,
     String,
     Table,
     create_engine,
+    inspect,
     text,
 )
 from sqlalchemy.engine import make_url
@@ -58,10 +60,12 @@ users = Table(
     Column("password_hash", String(255), nullable=False),
     Column("role", String(10), nullable=False),
     Column("balance_cents", BigInteger, nullable=False, server_default="0"),
+    Column("account_number", String(12), nullable=True),
     Column("created_at", String(40), nullable=False),
     CheckConstraint("role IN ('client', 'admin')"),
     CheckConstraint("balance_cents >= 0"),
 )
+Index("uq_users_account_number", users.c.account_number, unique=True)
 transactions_table = Table(
     "transactions",
     metadata,
@@ -70,6 +74,7 @@ transactions_table = Table(
     Column("kind", String(10), nullable=False),
     Column("amount_cents", BigInteger, nullable=False),
     Column("balance_after_cents", BigInteger, nullable=False),
+    Column("counterparty_account", String(12), nullable=True),
     Column("created_at", String(40), nullable=False),
     CheckConstraint("kind IN ('deposit', 'withdrawal')"),
     CheckConstraint("amount_cents > 0"),
@@ -85,6 +90,7 @@ def get_db():
 
 def initialize_database():
     metadata.create_all(engine)
+    migrate_schema()
     admin_username = os.environ.get("ADMIN_USERNAME") or os.environ.get(
         "DEMO_ADMIN_USERNAME"
     )
@@ -99,6 +105,38 @@ def initialize_database():
         seed_user(admin_username, admin_password, "admin")
 
 
+def generate_account_number():
+    return f"{secrets.randbelow(10**12):012d}"
+
+
+def migrate_schema():
+    existing_users = {column["name"] for column in inspect(engine).get_columns("users")}
+    existing_transactions = {
+        column["name"] for column in inspect(engine).get_columns("transactions")
+    }
+
+    with engine.begin() as db:
+        if "account_number" not in existing_users:
+            db.exec_driver_sql("ALTER TABLE users ADD COLUMN account_number VARCHAR(12)")
+        if "counterparty_account" not in existing_transactions:
+            db.exec_driver_sql(
+                "ALTER TABLE transactions ADD COLUMN counterparty_account VARCHAR(12)"
+            )
+        db.exec_driver_sql(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_users_account_number "
+            "ON users (account_number)"
+        )
+        existing_ids = db.execute(
+            text("SELECT id FROM users WHERE account_number IS NULL ORDER BY id")
+        ).scalars().all()
+        for user_id in existing_ids:
+            account_number = generate_account_number()
+            db.execute(
+                text("UPDATE users SET account_number = :number WHERE id = :user_id"),
+                {"number": account_number, "user_id": user_id},
+            )
+
+
 def seed_user(username, password, role):
     if not username or not password:
         raise RuntimeError(f"Initial {role} username and password must not be empty.")
@@ -109,8 +147,9 @@ def seed_user(username, password, role):
     with get_db() as db:
         result = db.execute(
             text(
-                """INSERT INTO users (username, password_hash, role, created_at)
-                   VALUES (:username, :password_hash, :role, :created_at)
+                """INSERT INTO users
+                   (username, password_hash, role, account_number, created_at)
+                   VALUES (:username, :password_hash, :role, :account_number, :created_at)
                    ON CONFLICT (username) DO UPDATE
                    SET password_hash = excluded.password_hash
                    WHERE users.role = excluded.role"""
@@ -119,6 +158,7 @@ def seed_user(username, password, role):
                 "username": username,
                 "password_hash": generate_password_hash(password),
                 "role": role,
+                "account_number": generate_account_number(),
                 "created_at": now(),
             },
         )
@@ -216,12 +256,14 @@ def register():
         with get_db() as db:
             db.execute(
                 text(
-                    """INSERT INTO users (username, password_hash, role, created_at)
-                       VALUES (:username, :password_hash, 'client', :created_at)"""
+                    """INSERT INTO users
+                       (username, password_hash, role, account_number, created_at)
+                       VALUES (:username, :password_hash, 'client', :account_number, :created_at)"""
                 ),
                 {
                     "username": username,
                     "password_hash": generate_password_hash(password),
+                    "account_number": generate_account_number(),
                     "created_at": now(),
                 },
             )
@@ -291,12 +333,16 @@ def logout():
 def client_dashboard():
     with get_db() as db:
         user = db.execute(
-            text("SELECT username, balance_cents FROM users WHERE id = :user_id"),
+            text(
+                "SELECT username, balance_cents, account_number "
+                "FROM users WHERE id = :user_id"
+            ),
             {"user_id": session["user_id"]},
         ).mappings().first()
         transactions = db.execute(
             text(
-                """SELECT kind, amount_cents, balance_after_cents, created_at
+                """SELECT kind, amount_cents, balance_after_cents,
+                          counterparty_account, created_at
                    FROM transactions WHERE user_id = :user_id
                    ORDER BY id DESC LIMIT 20"""
             ),
@@ -366,13 +412,115 @@ def transact():
     return redirect(url_for("client_dashboard"))
 
 
+@app.post("/transfer")
+@login_required("client")
+def transfer():
+    validate_csrf()
+    recipient_account = request.form.get("recipient_account", "").strip()
+    amount_cents = parse_amount(request.form.get("amount", ""))
+    if not re.fullmatch(r"\d{12}", recipient_account) or amount_cents is None:
+        flash("Enter a valid 12-digit recipient account number and transfer amount.", "error")
+        return redirect(url_for("client_dashboard"))
+
+    sender_id = session["user_id"]
+    with get_db() as db:
+        sender = db.execute(
+            text(
+                "SELECT account_number FROM users "
+                "WHERE id = :user_id AND role = 'client'"
+            ),
+            {"user_id": sender_id},
+        ).mappings().first()
+        recipient = db.execute(
+            text(
+                "SELECT id, username FROM users "
+                "WHERE account_number = :account_number AND role = 'client'"
+            ),
+            {"account_number": recipient_account},
+        ).mappings().first()
+
+        if sender is None:
+            session.clear()
+            return redirect(url_for("home"))
+        if recipient is None:
+            flash("We couldn't find a Demel Bank customer with that account number.", "error")
+            return redirect(url_for("client_dashboard"))
+        if recipient["id"] == sender_id:
+            flash("Choose another customer's account; you can't transfer to yourself.", "error")
+            return redirect(url_for("client_dashboard"))
+
+        sender_balance = db.execute(
+            text(
+                """UPDATE users SET balance_cents = balance_cents - :amount_cents
+                   WHERE id = :user_id AND balance_cents >= :amount_cents
+                   RETURNING balance_cents"""
+            ),
+            {"amount_cents": amount_cents, "user_id": sender_id},
+        ).mappings().first()
+        if sender_balance is None:
+            flash("There is not enough money in your available balance.", "error")
+            return redirect(url_for("client_dashboard"))
+
+        recipient_balance = db.execute(
+            text(
+                """UPDATE users SET balance_cents = balance_cents + :amount_cents
+                   WHERE id = :user_id
+                   RETURNING balance_cents"""
+            ),
+            {"amount_cents": amount_cents, "user_id": recipient["id"]},
+        ).mappings().first()
+        if recipient_balance is None:
+            abort(500, description="The transfer could not be completed.")
+
+        timestamp = now()
+        db.execute(
+            text(
+                """INSERT INTO transactions
+                   (user_id, kind, amount_cents, balance_after_cents,
+                    counterparty_account, created_at)
+                   VALUES (:user_id, 'withdrawal', :amount_cents, :balance_after_cents,
+                           :counterparty_account, :created_at)"""
+            ),
+            {
+                "user_id": sender_id,
+                "amount_cents": amount_cents,
+                "balance_after_cents": sender_balance["balance_cents"],
+                "counterparty_account": recipient_account,
+                "created_at": timestamp,
+            },
+        )
+        db.execute(
+            text(
+                """INSERT INTO transactions
+                   (user_id, kind, amount_cents, balance_after_cents,
+                    counterparty_account, created_at)
+                   VALUES (:user_id, 'deposit', :amount_cents, :balance_after_cents,
+                           :counterparty_account, :created_at)"""
+            ),
+            {
+                "user_id": recipient["id"],
+                "amount_cents": amount_cents,
+                "balance_after_cents": recipient_balance["balance_cents"],
+                "counterparty_account": sender["account_number"],
+                "created_at": timestamp,
+            },
+        )
+
+    flash(
+        f"Simulated transfer of {format_php(amount_cents)} sent to "
+        f"{recipient['username']}. No real funds were moved.",
+        "success",
+    )
+    return redirect(url_for("client_dashboard"))
+
+
 @app.get("/admin")
 @login_required("admin")
 def admin_dashboard():
     with get_db() as db:
         clients = db.execute(
             text(
-                """SELECT id, username, balance_cents, created_at
+                """SELECT id, username, balance_cents, account_number, created_at
                    FROM users WHERE role = 'client' ORDER BY username"""
             )
         ).mappings().all()
@@ -380,6 +528,7 @@ def admin_dashboard():
             text(
                 """SELECT transactions.kind, transactions.amount_cents,
                           transactions.balance_after_cents, transactions.created_at,
+                          transactions.counterparty_account,
                           users.username
                    FROM transactions JOIN users ON users.id = transactions.user_id
                    ORDER BY transactions.id DESC LIMIT 50"""
@@ -408,12 +557,14 @@ def create_client():
         with get_db() as db:
             db.execute(
                 text(
-                    """INSERT INTO users (username, password_hash, role, created_at)
-                       VALUES (:username, :password_hash, 'client', :created_at)"""
+                    """INSERT INTO users
+                       (username, password_hash, role, account_number, created_at)
+                       VALUES (:username, :password_hash, 'client', :account_number, :created_at)"""
                 ),
                 {
                     "username": username,
                     "password_hash": generate_password_hash(password),
+                    "account_number": generate_account_number(),
                     "created_at": now(),
                 },
             )

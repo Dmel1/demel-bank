@@ -13,6 +13,7 @@
       <div class="balance-amount">{{ user.balance_cents|php }}</div>
       <p>Philippine peso <span class="balance-separator">·</span> Personal account</p>
       <p class="balance-disclosure">Simulated balance — no real funds are held.</p>
+      <p class="account-number">ACCOUNT NUMBER <strong>{{ user.account_number }}</strong></p>
     </div>
   </div>
 </section>
@@ -37,13 +38,24 @@
       <button class="button secondary" type="submit">Continue <span aria-hidden="true">→</span></button>
     </form>
   </article>
+  <article class="card action-card transfer-card">
+    <div class="section-title"><span class="action-icon transfer-icon">⇄</span><div><p class="eyebrow">INTERNAL TRANSFER</p><h2>Send simulated funds</h2><p class="muted">Transfer between Demel Bank prototype accounts only. No real money moves.</p></div></div>
+    <form action="{{ url_for('transfer') }}" method="post" class="form-stack">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label for="recipient-account">RECIPIENT ACCOUNT NUMBER</label>
+      <input id="recipient-account" name="recipient_account" type="text" inputmode="numeric" pattern="[0-9]{12}" minlength="12" maxlength="12" placeholder="12-digit account number" required>
+      <label for="transfer-amount">TRANSFER AMOUNT</label>
+      <div class="amount-input"><span>₱</span><input id="transfer-amount" name="amount" type="number" min="0.01" max="1000000000" step="0.01" placeholder="0.00" required></div>
+      <button class="button primary" type="submit">Send transfer <span aria-hidden="true">→</span></button>
+    </form>
+  </article>
 </section>
 <section class="card history-card" id="activity">
   <div class="table-heading"><div><p class="eyebrow">YOUR ACTIVITY</p><h2>Recent transactions</h2></div><span class="muted">Latest 20</span></div>
   {% if transactions %}
-  <div class="table-scroll"><table><thead><tr><th>Transaction</th><th>Date (UTC)</th><th>Amount</th><th>Balance after</th></tr></thead><tbody>
+  <div class="table-scroll"><table><thead><tr><th>Transaction</th><th>Account / counterparty</th><th>Date (UTC)</th><th>Amount</th><th>Balance after</th></tr></thead><tbody>
   {% for transaction in transactions %}
-    <tr><td><span class="transaction-type {{ transaction.kind }}">{{ 'Deposit' if transaction.kind == 'deposit' else 'Withdrawal' }}</span></td><td>{{ transaction.created_at|replace('T', ' ') }}</td><td class="{{ 'positive' if transaction.kind == 'deposit' else '' }}">{{ '+' if transaction.kind == 'deposit' else '−' }}{{ transaction.amount_cents|php }}</td><td>{{ transaction.balance_after_cents|php }}</td></tr>
+    <tr><td><span class="transaction-type {{ transaction.kind }}">{% if transaction.counterparty_account %}{{ 'Transfer sent' if transaction.kind == 'withdrawal' else 'Transfer received' }}{% else %}{{ 'Deposit' if transaction.kind == 'deposit' else 'Withdrawal' }}{% endif %}</span></td><td>{{ transaction.counterparty_account or '—' }}</td><td>{{ transaction.created_at|replace('T', ' ') }}</td><td class="{{ 'positive' if transaction.kind == 'deposit' else '' }}">{{ '+' if transaction.kind == 'deposit' else '−' }}{{ transaction.amount_cents|php }}</td><td>{{ transaction.balance_after_cents|php }}</td></tr>
   {% endfor %}
   </tbody></table></div>
   {% else %}

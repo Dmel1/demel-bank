@@ -66,7 +66,7 @@ input:focus, select:focus { border-color: #6bb6ae; box-shadow: 0 0 0 3px rgba(21
 .balance-amount { margin: 8px 0 3px; color: var(--navy); font-family: Manrope, sans-serif; font-size: 34px; font-weight: 700; letter-spacing: -1px; }
 .balance-card p { margin: 0; color: #72838a; font-size: 11px; }
 .balance-symbol { color: rgba(255,255,255,.1); font-family: Manrope, sans-serif; font-size: 150px; font-weight: 700; line-height: 1; }
-.action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 19px; }
+.action-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin-top: 19px; }
 .action-card { padding: 21px; }
 .section-title { display: flex; align-items: center; gap: 11px; margin-bottom: 18px; }
 .section-title h2, .table-heading h2 { margin: 0 0 3px; font-size: 15px; letter-spacing: -.3px; }
@@ -74,6 +74,10 @@ input:focus, select:focus { border-color: #6bb6ae; box-shadow: 0 0 0 3px rgba(21
 .action-icon { width: 35px; height: 35px; display: grid; place-items: center; border-radius: 8px; font-size: 20px; }
 .deposit-icon { background: #e7f5f2; color: var(--teal); }
 .withdraw-icon { background: #f1f3f7; color: #536a7e; }
+.transfer-icon { background: #edf2f8; color: var(--navy); }
+.transfer-card .form-stack { gap: 7px; }
+.account-number { margin-top: 9px !important; color: #718096 !important; font-size: 9px !important; letter-spacing: .5px; }
+.account-number strong { margin-left: 7px; color: var(--navy); font-size: 11px; letter-spacing: 1px; }
 .inline-form { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 7px 10px; }
 .inline-form label { grid-column: 1 / -1; }
 .amount-input { position: relative; }
@@ -270,6 +274,8 @@ footer { display: flex; align-items: center; justify-content: center; gap: 12px;
   .side-link.active::before { top: auto; right: 9px; bottom: 0; left: 9px; width: auto; height: 2px; }
   .sidebar .nav-chevron { display: none; }
   .page { padding-top: 19px; }
+  .action-grid { grid-template-columns: 1fr 1fr; }
+  .transfer-card { grid-column: 1 / -1; }
   .login-layout, .registration-layout { gap: 45px; }
 }
 @media (max-width: 650px) {
@@ -293,6 +299,7 @@ footer { display: flex; align-items: center; justify-content: center; gap: 12px;
   .balance-icon { width: 40px; height: 40px; flex-basis: 40px; }
   .balance-amount { font-size: 28px; }
   .action-grid { grid-template-columns: 1fr; gap: 11px; }
+  .transfer-card { grid-column: auto; }
   .action-card { padding: 17px; }
   .history-card { padding: 17px 13px 5px; }
   .table-heading { align-items: flex-end; }

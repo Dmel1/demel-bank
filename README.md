@@ -17,7 +17,19 @@ python app.py
 
 Open `http://127.0.0.1:5000` in your browser. The local database is `instance/bank_demo.sqlite3`; registered accounts and transaction records persist across restarts. Passwords are stored as hashes.
 
-Visitors can create a personal account from the sign-in page. Usernames must be 3–32 letters, numbers, dots, dashes, or underscores. Passwords must contain at least 8 characters. New accounts are saved to the configured database and start with a zero balance.
+Visitors can create a personal account from the sign-in page. Usernames must be 3–32 letters, numbers, dots, dashes, or underscores. Passwords must contain at least 8 characters. New accounts are saved to the configured database and start with a zero balance. Each account is assigned a unique 12-digit account number that customers can share to receive an internal prototype transfer.
+
+Signed-in customers can transfer simulated balances to another Demel Bank customer using that customer's 12-digit account number. Each transfer atomically debits and credits the two prototype accounts, and records the matching sender and recipient entries in their activity histories. Transfers cannot be made to the sender's own account, an administrator, or an account that does not exist. This feature does not connect to other banks or move real money.
+
+Existing SQLite and PostgreSQL databases are upgraded on app startup: customers receive account numbers, and transaction records gain counterparty metadata. Account numbers are generated once per existing user and retained on future restarts.
+
+## Tests
+
+Run the focused account-number, transfer, migration, and admin-provisioning tests:
+
+```powershell
+python -m unittest discover -s tests -v
+```
 
 ## Administrator access
 
