@@ -107,11 +107,13 @@ def seed_user(username, password, role):
             f"Initial {role} username must be 3–32 letters, numbers, dots, dashes, or underscores."
         )
     with get_db() as db:
-        db.execute(
+        result = db.execute(
             text(
                 """INSERT INTO users (username, password_hash, role, created_at)
                    VALUES (:username, :password_hash, :role, :created_at)
-                   ON CONFLICT (username) DO NOTHING"""
+                   ON CONFLICT (username) DO UPDATE
+                   SET password_hash = excluded.password_hash
+                   WHERE users.role = excluded.role"""
             ),
             {
                 "username": username,
@@ -120,6 +122,10 @@ def seed_user(username, password, role):
                 "created_at": now(),
             },
         )
+        if result.rowcount == 0:
+            raise RuntimeError(
+                f"The configured {role} username is already assigned to a different role."
+            )
 
 
 def now():

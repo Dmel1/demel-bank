@@ -21,7 +21,7 @@ Visitors can create a personal account from the sign-in page. Usernames must be 
 
 ## Administrator access
 
-No public administrator credentials are created by default. To provision an administrator on first startup, set both `ADMIN_USERNAME` and `ADMIN_PASSWORD` in the environment before launching the app. Existing administrator records are not overwritten on later starts. The legacy `DEMO_ADMIN_USERNAME` and `DEMO_ADMIN_PASSWORD` variables are also recognized.
+No public administrator credentials are created by default. To provision an administrator, set both `ADMIN_USERNAME` and `ADMIN_PASSWORD` in the environment before launching the app. On startup, the configured password is hashed and applied to that administrator, so changing the environment password also rotates the existing administrator's password. The legacy `DEMO_ADMIN_USERNAME` and `DEMO_ADMIN_PASSWORD` variables are also recognized. If the configured username already belongs to a personal account, startup fails clearly instead of changing that account's role.
 
 ## Deploy on Render
 
@@ -30,7 +30,7 @@ Render's web-service filesystem is temporary, so local SQLite is for development
 1. Push this project to GitHub and create the web service using **New +** → **Blueprint**. Render reads `render.yaml`.
 2. Create a PostgreSQL database in the **Oregon** region and copy its internal database URL.
 3. Set `DATABASE_URL` in the web service's environment settings and redeploy.
-4. Set `ADMIN_USERNAME` and `ADMIN_PASSWORD` before the first startup if administrator access is needed.
+4. Set `ADMIN_USERNAME` and `ADMIN_PASSWORD` in the web service's environment before startup if administrator access is needed. The included Blueprint declares both variables as required manual values. If an existing service was created before these settings were added, set both variables in its Render **Environment** settings and redeploy. The configured credentials apply to the hosted database only; a local SQLite admin account is not copied to Render.
 5. Visitors can register their personal accounts from the sign-in page.
 
 The app uses SQLite when `DATABASE_URL` is unset and PostgreSQL when it is set. A local SQLite database is not automatically copied to PostgreSQL. Existing records in a database are preserved.
