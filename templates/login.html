@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Sign in · Demel Bank{% endblock %}
+{% block content %}
+<section class="login-layout">
+  <div class="welcome">
+    <span class="welcome-kicker"><span></span> BANKING, MADE PERSONAL</span>
+    <h1>A better way<br>to manage <em>money.</em></h1>
+    <p class="welcome-copy">A clear, convenient way to review your account and keep track of activity.</p>
+    <div class="welcome-highlights">
+      <div class="welcome-highlight"><span class="highlight-icon">↗</span><span><strong>See the full picture</strong><small>Balances and activity, all in one place.</small></span></div>
+      <div class="welcome-highlight"><span class="highlight-icon">⌁</span><span><strong>Stay in control</strong><small>Review your balance and account activity.</small></span></div>
+    </div>
+    <div class="welcome-note"><span class="lock-icon">✓</span><span><strong>Prototype experience</strong><small>Account balances are simulated; no real money is involved.</small></span></div>
+  </div>
+  <section class="card login-card">
+    <div class="login-icon">↗</div>
+    <p class="eyebrow">YOUR ACCOUNT</p>
+    <h2>Welcome back</h2>
+    <p class="muted">Sign in to access your account.</p>
+    <form action="{{ url_for('login') }}" method="post" class="form-stack">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label for="role">Account type</label>
+      <select id="role" name="role" required>
+        <option value="client">Personal account</option>
+        <option value="admin">Administrator</option>
+      </select>
+      <label for="username">Username</label>
+      <input id="username" name="username" autocomplete="username" placeholder="Enter your username" required>
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required>
+      <button class="button primary full" type="submit">Sign in securely <span aria-hidden="true">→</span></button>
+    </form>
+    <p class="account-prompt">New to Demel Bank? <a href="{{ url_for('register') }}">Create an account</a></p>
+    <p class="login-security"><span>✓</span> Your password is stored securely as a hash.</p>
+  </section>
+</section>
+{% endblock %}

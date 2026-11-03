@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#102a43">
+  <title>{% block title %}Demel Bank{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="{{ url_for('home') }}"><span class="brand-mark">D</span><span class="brand-name">Demel<span class="brand-light">Bank</span></span></a>
+    <div class="topbar-context"><span class="secure-mark">✓</span> Online banking</div>
+    {% if session.get('user_id') %}
+      <div class="topbar-user">
+        <span class="user-avatar">{{ session.get('username')[:1]|upper }}</span>
+        <span class="user-details"><strong>{{ session.get('username') }}</strong><span class="role-tag">{{ session.get('role') }} account</span></span>
+        <form action="{{ url_for('logout') }}" method="post">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button class="text-button" type="submit">Sign out <span aria-hidden="true">↗</span></button>
+        </form>
+      </div>
+    {% endif %}
+  </header>
+  <div class="app-shell{% if session.get('user_id') %} has-sidebar{% endif %}">
+    {% if session.get('user_id') %}
+      <aside class="sidebar">
+        <p class="nav-caption">WORKSPACE</p>
+        {% if session.get('role') == 'client' %}
+          <a class="side-link active" href="{{ url_for('client_dashboard') }}"><span class="nav-icon">⌂</span> Account overview <span class="nav-chevron">›</span></a>
+          <a class="side-link" href="{{ url_for('client_dashboard') }}#activity"><span class="nav-icon">↻</span> Transactions</a>
+        {% else %}
+          <a class="side-link active" href="{{ url_for('admin_dashboard') }}"><span class="nav-icon">▦</span> Admin overview <span class="nav-chevron">›</span></a>
+          <a class="side-link" href="{{ url_for('admin_dashboard') }}#clients"><span class="nav-icon">♙</span> Client accounts</a>
+          <a class="side-link" href="{{ url_for('admin_dashboard') }}#create-account"><span class="nav-icon">＋</span> Create account</a>
+          <a class="side-link" href="{{ url_for('admin_dashboard') }}#activity"><span class="nav-icon">↻</span> Transactions</a>
+        {% endif %}
+        <div class="sidebar-bottom">
+          <div class="sidebar-help-icon">i</div>
+          <strong>Prototype account</strong>
+          <p>Balances and activity are simulated. No real funds are held or moved.</p>
+        </div>
+      </aside>
+    {% endif %}
+    <main class="page">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="messages" role="status">
+            {% for category, message in messages %}
+              <p class="message {{ category }}">{{ message }}</p>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+  <footer><span class="footer-brand">DEMEL BANK</span><span>Prototype only. Balances and transactions are simulated; no real funds or financial services are provided.</span></footer>
+</body>
+</html>

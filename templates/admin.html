@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Admin overview · Demel Bank{% endblock %}
+{% block content %}
+<section class="dashboard-heading">
+  <div><p class="eyebrow">ADMINISTRATION <span class="heading-slash">/</span> OVERVIEW</p><h1>Account overview</h1><p class="muted">Manage customer accounts and review recent activity.</p></div>
+  <span class="account-chip admin-chip"><span>●</span> Admin access</span>
+</section>
+<section class="stat-grid">
+  <article class="card stat-card"><span class="stat-icon">♙</span><span class="stat-label">TOTAL CLIENT ACCOUNTS</span><strong>{{ clients|length }}</strong><span class="stat-footnote">Registered customers</span></article>
+  <article class="card stat-card"><span class="stat-icon">₱</span><span class="stat-label">TOTAL ACCOUNT BALANCES</span><strong>{{ clients|sum(attribute='balance_cents')|php }}</strong><span class="stat-footnote">Simulated; not real funds</span></article>
+</section>
+<section class="card account-create-card" id="create-account">
+  <div class="table-heading"><div><p class="eyebrow">NEW CLIENT</p><h2>Create a client account</h2><p class="muted">Set a username and password for a new client.</p></div></div>
+  <form action="{{ url_for('create_client') }}" method="post" class="create-account-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="create-field"><label for="new-username">USERNAME</label><input id="new-username" name="username" minlength="3" maxlength="32" pattern="[A-Za-z0-9_.-]+" autocomplete="off" placeholder="e.g. alex_client" required></div>
+    <div class="create-field"><label for="new-password">TEMPORARY PASSWORD</label><input id="new-password" name="password" type="password" minlength="8" autocomplete="new-password" placeholder="At least 8 characters" required></div>
+    <button class="button primary create-button" type="submit">Create account <span aria-hidden="true">→</span></button>
+  </form>
+  <p class="create-hint"><span>i</span> New accounts start with a zero prototype balance.</p>
+</section>
+<section class="card history-card" id="clients">
+  <div class="table-heading"><div><p class="eyebrow">CLIENTS</p><h2>Customer accounts</h2></div><a class="table-action" href="#create-account">+ Add client</a></div>
+  {% if clients %}
+  <div class="table-scroll"><table><thead><tr><th>Username</th><th>Created (UTC)</th><th>Prototype balance</th></tr></thead><tbody>
+  {% for client in clients %}<tr><td><strong>{{ client.username }}</strong></td><td>{{ client.created_at|replace('T', ' ') }}</td><td>{{ client.balance_cents|php }}</td></tr>{% endfor %}
+  </tbody></table></div>
+  {% else %}<div class="empty-state"><strong>No client accounts found.</strong></div>{% endif %}
+</section>
+<section class="card history-card" id="activity">
+  <div class="table-heading"><div><p class="eyebrow">ACCOUNT ACTIVITY</p><h2>Recent transactions</h2></div><span class="muted">Latest 50</span></div>
+  {% if transactions %}
+  <div class="table-scroll"><table><thead><tr><th>Client</th><th>Type</th><th>Date (UTC)</th><th>Amount</th><th>Balance after</th></tr></thead><tbody>
+  {% for transaction in transactions %}<tr><td><strong>{{ transaction.username }}</strong></td><td><span class="transaction-type {{ transaction.kind }}">{{ 'Deposit' if transaction.kind == 'deposit' else 'Withdrawal' }}</span></td><td>{{ transaction.created_at|replace('T', ' ') }}</td><td class="{{ 'positive' if transaction.kind == 'deposit' else '' }}">{{ '+' if transaction.kind == 'deposit' else '−' }}{{ transaction.amount_cents|php }}</td><td>{{ transaction.balance_after_cents|php }}</td></tr>{% endfor %}
+  </tbody></table></div>
+  {% else %}<div class="empty-state"><strong>No transactions yet</strong><p>Client activity will appear here.</p></div>{% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Create account · Demel Bank{% endblock %}
+{% block content %}
+<section class="registration-layout">
+  <div class="welcome">
+    <span class="welcome-kicker"><span></span> PERSONAL BANKING</span>
+    <h1>Start with a<br><em>clearer view.</em></h1>
+    <p class="welcome-copy">Create an account to see a personal balance overview and keep track of account activity.</p>
+    <div class="welcome-note"><span class="lock-icon">✓</span><span><strong>Prototype experience</strong><small>Balances are simulated. No real funds or financial services are provided.</small></span></div>
+  </div>
+  <section class="card login-card">
+    <div class="login-icon">＋</div>
+    <p class="eyebrow">PERSONAL ACCOUNT</p>
+    <h2>Create your account</h2>
+    <p class="muted">Choose a username and password to get started.</p>
+    <form action="{{ url_for('register') }}" method="post" class="form-stack">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label for="username">Username</label>
+      <input id="username" name="username" minlength="3" maxlength="32" pattern="[A-Za-z0-9_.-]+" autocomplete="username" placeholder="3–32 letters, numbers, . _ or -" value="{{ request.form.get('username', '') }}" required>
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" minlength="8" autocomplete="new-password" placeholder="At least 8 characters" required>
+      <label for="password-confirmation">Confirm password</label>
+      <input id="password-confirmation" name="password_confirmation" type="password" minlength="8" autocomplete="new-password" placeholder="Enter your password again" required>
+      <button class="button primary full" type="submit">Create account <span aria-hidden="true">→</span></button>
+    </form>
+    <p class="account-prompt">Already have an account? <a href="{{ url_for('home') }}">Sign in</a></p>
+  </section>
+</section>
+{% endblock %}

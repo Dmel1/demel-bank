@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}My account · Demel Bank{% endblock %}
+{% block content %}
+<section class="dashboard-heading">
+  <div><p class="eyebrow">PERSONAL BANKING <span class="heading-slash">/</span> OVERVIEW</p><h1>Good day, {{ user.username }}.</h1><p class="muted">Here’s what’s happening with your account today.</p></div>
+  <span class="account-chip"><span>●</span> Account active</span>
+</section>
+<section class="balance-card">
+  <div class="balance-content">
+    <span class="balance-icon" aria-hidden="true">₱</span>
+    <div class="balance-details">
+      <span class="balance-label">ACCOUNT BALANCE</span>
+      <div class="balance-amount">{{ user.balance_cents|php }}</div>
+      <p>Philippine peso <span class="balance-separator">·</span> Personal account</p>
+      <p class="balance-disclosure">Simulated balance — no real funds are held.</p>
+    </div>
+  </div>
+</section>
+<section class="action-grid">
+  <article class="card action-card">
+    <div class="section-title"><span class="action-icon deposit-icon">↙</span><div><p class="eyebrow">ACCOUNT ACTIVITY</p><h2>Record a deposit</h2><p class="muted">Update your prototype balance. No funds are transferred.</p></div></div>
+    <form action="{{ url_for('transact') }}" method="post" class="form-stack inline-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="kind" value="deposit">
+      <label for="deposit-amount">DEPOSIT AMOUNT</label>
+      <div class="amount-input"><span>₱</span><input id="deposit-amount" name="amount" type="number" min="0.01" max="1000000000" step="0.01" placeholder="0.00" required></div>
+      <button class="button primary" type="submit">Continue <span aria-hidden="true">→</span></button>
+    </form>
+  </article>
+  <article class="card action-card">
+    <div class="section-title"><span class="action-icon withdraw-icon">↗</span><div><p class="eyebrow">ACCOUNT ACTIVITY</p><h2>Record a withdrawal</h2><p class="muted">Update your prototype balance. No funds are transferred.</p></div></div>
+    <form action="{{ url_for('transact') }}" method="post" class="form-stack inline-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="kind" value="withdrawal">
+      <label for="withdraw-amount">WITHDRAWAL AMOUNT</label>
+      <div class="amount-input"><span>₱</span><input id="withdraw-amount" name="amount" type="number" min="0.01" max="1000000000" step="0.01" placeholder="0.00" required></div>
+      <button class="button secondary" type="submit">Continue <span aria-hidden="true">→</span></button>
+    </form>
+  </article>
+</section>
+<section class="card history-card" id="activity">
+  <div class="table-heading"><div><p class="eyebrow">YOUR ACTIVITY</p><h2>Recent transactions</h2></div><span class="muted">Latest 20</span></div>
+  {% if transactions %}
+  <div class="table-scroll"><table><thead><tr><th>Transaction</th><th>Date (UTC)</th><th>Amount</th><th>Balance after</th></tr></thead><tbody>
+  {% for transaction in transactions %}
+    <tr><td><span class="transaction-type {{ transaction.kind }}">{{ 'Deposit' if transaction.kind == 'deposit' else 'Withdrawal' }}</span></td><td>{{ transaction.created_at|replace('T', ' ') }}</td><td class="{{ 'positive' if transaction.kind == 'deposit' else '' }}">{{ '+' if transaction.kind == 'deposit' else '−' }}{{ transaction.amount_cents|php }}</td><td>{{ transaction.balance_after_cents|php }}</td></tr>
+  {% endfor %}
+  </tbody></table></div>
+  {% else %}
+  <div class="empty-state"><span class="empty-icon">↗</span><strong>No transactions yet</strong><p>Your deposits and withdrawals will appear here.</p></div>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Request error · Demel Bank{% endblock %}
+{% block content %}
+<section class="card error-card">
+  <p class="eyebrow">REQUEST NOT COMPLETED</p>
+  <h1>{{ error.code }}</h1>
+  <p>{{ error.description }}</p>
+  <a class="button primary" href="{{ url_for('home') }}">Return to sign in</a>
+</section>
+{% endblock %}
